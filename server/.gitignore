@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.pytest_cache/
+reference_features/*/
+!reference_features/.gitkeep
