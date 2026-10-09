@@ -1,7 +1,7 @@
 /**
  * Thin HTTP client for our own FastAPI backend (see /server). This is the
  * ANALYSIS backend — it in turn talks to UmmahAPI for Quran data/reference
- * audio and to OpenAI for pronunciation/Tajweed scoring, but the mobile app
+ * audio and to OpenAI for the recitation score and feedback, but the mobile app
  * never calls either of those directly, and never holds their credentials.
  *
  * Base URL: for the iOS Simulator, `localhost` reaches the host Mac

@@ -5,7 +5,7 @@ from app.providers.mp3quran_clip_source import Mp3QuranClipSource
 from app.providers.quran_audio_provider import QuranAudioProvider
 from app.providers.ummah_api_provider import UmmahApiProvider
 from app.services.analysis_engine import AnalysisEngine
-from app.services.pronunciation_service import PronunciationService
+from app.services.recitation_feedback_service import RecitationFeedbackService
 from app.services.reference_feature_service import ReferenceFeatureService
 from app.storage.reference_store import ReferenceFeatureStore
 
@@ -31,10 +31,10 @@ def get_reference_feature_service() -> ReferenceFeatureService:
 
 
 @lru_cache
-def get_pronunciation_service() -> PronunciationService:
-    return PronunciationService()
+def get_recitation_feedback_service() -> RecitationFeedbackService:
+    return RecitationFeedbackService()
 
 
 @lru_cache
 def get_analysis_engine() -> AnalysisEngine:
-    return AnalysisEngine(get_provider(), get_reference_feature_service(), get_pronunciation_service())
+    return AnalysisEngine(get_provider(), get_reference_feature_service(), get_recitation_feedback_service())

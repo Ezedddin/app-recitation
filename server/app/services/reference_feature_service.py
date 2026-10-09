@@ -1,6 +1,6 @@
 import asyncio
 import hashlib
-import tempfile
+import uuid
 from pathlib import Path
 
 import httpx
@@ -105,7 +105,19 @@ class ReferenceFeatureService:
             self._store.save(record)
             return record.features
 
-    async def _create(self, reciter_id: str, surah_number: int, ayah_number: int, version: int) -> ReferenceFeatureRecord:
+    async def get_audio_path(self, reciter_id: str, surah_number: int, ayah_number: int) -> Path:
+        """The reference recording on disk, downloaded once and then reused —
+        references created before audio was kept are fetched on first use."""
+        path = self._store.audio_path(PROVIDER_NAME, reciter_id, surah_number, ayah_number)
+        if path.exists():
+            return path
+        lock = await reference_locks.get(f"audio:{PROVIDER_NAME}:{reciter_id}:{surah_number}:{ayah_number}")
+        async with lock:
+            if not path.exists():
+                await self._fetch_audio(await self._resolve_audio_url(reciter_id, surah_number, ayah_number), path)
+            return path
+
+    async def _resolve_audio_url(self, reciter_id: str, surah_number: int, ayah_number: int) -> str:
         try:
             audio_entries = await self._provider.get_reference_audio(surah_number, ayah_number)
         except UmmahApiError as error:
@@ -117,11 +129,28 @@ class ReferenceFeatureService:
             raise ReferenceUnavailableError(
                 f"No reference audio available for reciter {reciter_id}, surah {surah_number}, ayah {ayah_number}"
             )
+        return audio_url
 
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            file_path = Path(tmp_dir) / "reference_audio"
-            audio_bytes = await self._download(audio_url, file_path)
-            features = await asyncio.to_thread(extract_audio_features, str(file_path))
+    async def _fetch_audio(self, url: str, path: Path) -> bytes:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        # Download beside the final path and rename, so a crash or a parallel
+        # download never leaves a half-written recording behind.
+        partial = path.with_name(f"{path.name}.{uuid.uuid4().hex}.partial")
+        try:
+            audio_bytes = await self._download(url, partial)
+            partial.replace(path)
+        finally:
+            partial.unlink(missing_ok=True)
+        return audio_bytes
+
+    async def _create(self, reciter_id: str, surah_number: int, ayah_number: int, version: int) -> ReferenceFeatureRecord:
+        audio_url = await self._resolve_audio_url(reciter_id, surah_number, ayah_number)
+        file_path = self._store.audio_path(PROVIDER_NAME, reciter_id, surah_number, ayah_number)
+        if file_path.exists():
+            audio_bytes = file_path.read_bytes()
+        else:
+            audio_bytes = await self._fetch_audio(audio_url, file_path)
+        features = await asyncio.to_thread(extract_audio_features, str(file_path))
 
         return ReferenceFeatureRecord(
             provider=PROVIDER_NAME,

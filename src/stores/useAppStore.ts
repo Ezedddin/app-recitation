@@ -22,6 +22,32 @@ interface AppState {
   clearVoiceDiscoveryAnalyses: () => void;
 }
 
+type PersistedState = Pick<
+  AppState,
+  'onboardingCompleted' | 'selectedReciterId' | 'lastSurahId' | 'lastAyahNumber' | 'attempts' | 'voiceDiscoveryAnalyses'
+>;
+
+interface V0Analysis extends Omit<RecitationAnalysis, 'feedback'> {
+  feedback?: string;
+  insights?: { id: string; detail: string }[];
+}
+
+function toV1Analysis(analysis: RecitationAnalysis): RecitationAnalysis {
+  const old = analysis as V0Analysis;
+  const feedback =
+    old.feedback ?? (old.insights ?? []).filter((insight) => insight.id !== 'overall').map((insight) => insight.detail).join(' ');
+  return {
+    id: old.id,
+    createdAt: old.createdAt,
+    surahId: old.surahId,
+    ayahNumber: old.ayahNumber,
+    reciterId: old.reciterId,
+    attemptNumber: old.attemptNumber,
+    overallScore: old.overallScore,
+    feedback,
+  };
+}
+
 /**
  * Single local persisted store for phase-1 prototype state. Keeping this as
  * one flat, serializable shape (rather than several stores) means a future
@@ -50,6 +76,20 @@ export const useAppStore = create<AppState>()(
     {
       name: 'app-recitatie-store',
       storage: createJSONStorage(() => AsyncStorage),
+      version: 1,
+      migrate: (persisted, version) => {
+        const state = persisted as PersistedState;
+        if (version < 1) {
+          // v0 analyses carried per-skill scores, per-word results and coach
+          // insights; v1 keeps only the overall score plus one feedback text.
+          state.attempts = (state.attempts ?? []).map((attempt) => ({
+            ...attempt,
+            analysis: toV1Analysis(attempt.analysis),
+          }));
+          state.voiceDiscoveryAnalyses = (state.voiceDiscoveryAnalyses ?? []).map(toV1Analysis);
+        }
+        return state;
+      },
       partialize: (state) => ({
         onboardingCompleted: state.onboardingCompleted,
         selectedReciterId: state.selectedReciterId,

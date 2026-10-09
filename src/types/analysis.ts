@@ -1,56 +1,8 @@
 /**
- * Core analysis data model.
- *
- * CORRECTNESS (pronunciation, tajweed) and STYLE (pitch, rhythm, timing,
- * melody, reciter similarity) are kept as separate top-level groups
- * everywhere in this codebase. Similarity to a reciter is a STYLE metric —
- * it must never be read as a measure of Quranic correctness.
+ * Core analysis data model: one 0–100 score plus the AI coach's feedback
+ * text. The backend blends its AI judgement of the recitation with a DSP
+ * style match against the chosen reciter into `overallScore`.
  */
-
-export type WordStatus = 'excellent' | 'good' | 'needsWork' | 'practice';
-
-/** Pitch relative to the speaker's own natural range, never absolute Hz. */
-export interface PitchPoint {
-  timestamp: number;
-  normalizedPitch: number;
-}
-
-export type PitchCue = 'raise' | 'lower' | 'hold' | 'graduallyRaise' | 'graduallyLower';
-
-export interface WordAnalysis {
-  index: number;
-  arabicText: string;
-  startTime: number;
-  endTime: number;
-  status: WordStatus;
-  pronunciationScore: number;
-  tajweedScore: number;
-  pitchScore: number;
-  pitchCue?: PitchCue;
-  feedback: string;
-}
-
-export interface CorrectnessScores {
-  pronunciation: number;
-  tajweed: number;
-}
-
-export interface StyleScores {
-  pitch: number;
-  rhythm: number;
-  timing: number;
-  melody: number;
-  /** Style similarity to the chosen reciter — NOT a correctness signal. */
-  similarity: number;
-}
-
-export interface CoachInsight {
-  id: string;
-  headline: string;
-  detail: string;
-  relatedWordIndex?: number;
-}
-
 export interface RecitationAnalysis {
   id: string;
   createdAt: string;
@@ -59,12 +11,7 @@ export interface RecitationAnalysis {
   reciterId: string;
   attemptNumber: number;
   overallScore: number;
-  correctness: CorrectnessScores;
-  style: StyleScores;
-  words: WordAnalysis[];
-  referencePitchContour: PitchPoint[];
-  userPitchContour: PitchPoint[];
-  insights: CoachInsight[];
+  feedback: string;
 }
 
 export interface RecitationAnalysisRequest {

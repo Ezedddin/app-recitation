@@ -7,7 +7,7 @@ import { Colors, Spacing, Typography } from '@/constants';
 import { analysisService } from '@/services/analysis';
 import { useAppStore } from '@/stores/useAppStore';
 
-const STEPS = ['Pronunciation', 'Tajweed', 'Pitch', 'Rhythm', 'Timing', 'Melody'];
+const STEPS = ['Listening', 'Comparing with your reciter', 'Scoring', 'Writing feedback'];
 
 export default function AnalyzingScreen() {
   const { surahId, ayahNumber, recordingUri, attemptNumber, durationMillis } = useLocalSearchParams<{

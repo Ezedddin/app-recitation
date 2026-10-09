@@ -14,19 +14,9 @@ export interface PracticeAttempt {
   analysis: RecitationAnalysis;
 }
 
-export type SkillId = 'pitch' | 'tajweed' | 'pronunciation' | 'rhythm' | 'melody';
-
-export interface SkillHistoryPoint {
+export interface ScoreHistoryPoint {
   label: string;
   value: number;
-}
-
-export interface SkillProgress {
-  skill: SkillId;
-  label: string;
-  current: number;
-  monthChangePercent: number;
-  history: SkillHistoryPoint[];
 }
 
 export interface ProgressSummary {
@@ -34,7 +24,10 @@ export interface ProgressSummary {
   totalMinutesPracticed: number;
   ayatPracticed: number;
   ayatMastered: number;
-  skills: SkillProgress[];
-  strongestSkill: SkillId;
-  currentFocus: SkillId;
+  /** Average score over the last 30 days (or all attempts, if none are that recent). */
+  averageScore: number;
+  /** Change of the 30-day average versus the 30 days before, in percent; 0 when there's no earlier month. */
+  monthChangePercent: number;
+  /** The most recent attempts' scores, oldest first. */
+  scoreHistory: ScoreHistoryPoint[];
 }

@@ -105,7 +105,7 @@ export default function DiscoverVoiceScreen() {
         <Text style={styles.headline}>{currentIndex === 0 ? "Let's hear your voice" : 'One more ayah'}</Text>
         <Text style={styles.subtitle}>
           {currentIndex === 0
-            ? "Recite a few ayat of Al-Fatihah so we can understand your natural strengths — no reciter comparison yet."
+            ? "Recite a few ayat of Al-Fatihah so we can hear where you're starting from."
             : 'Recite the next ayah whenever you\'re ready.'}
         </Text>
       </View>

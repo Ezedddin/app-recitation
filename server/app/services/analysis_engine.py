@@ -4,18 +4,23 @@ import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 
-from app.models.analysis import CoachInsight, CorrectnessScores, PitchPoint, RecitationAnalysis, WordAnalysis
+from app.models.analysis import RecitationAnalysis
 from app.models.quran import Ayah
 from app.providers.quran_audio_provider import QuranAudioProvider
-from app.services.audio_convert import convert_to_wav
+from app.services.audio_convert import concat_to_wav, convert_to_wav
 from app.services.audio_features import extract_audio_features
 from app.services.comparison import compare_features
-from app.services.insights import build_overall_insight, build_style_insight
-from app.services.pronunciation_service import PronunciationService, PronunciationServiceUnavailableError
+from app.services.pitch_guidance import pitch_differences
+from app.services.recitation_feedback_service import (
+    RecitationFeedbackService,
+    RecitationFeedbackUnavailableError,
+)
 from app.services.reference_feature_service import ReferenceFeatureService, ReferenceUnavailableError
 
-_STATUS_SCORE = {"excellent": 95.0, "good": 82.0, "needsWork": 65.0, "practice": 45.0}
-_VALID_STATUSES = set(_STATUS_SCORE)
+# The AI's judgement of the recitation itself dominates; the DSP style match
+# with the chosen reciter (pitch/rhythm/timing/melody) adds the rest.
+_AI_WEIGHT = 0.7
+_STYLE_WEIGHT = 0.3
 
 
 class AnalysisFailedError(RuntimeError):
@@ -28,11 +33,11 @@ class AnalysisEngine:
         self,
         provider: QuranAudioProvider,
         reference_features: ReferenceFeatureService,
-        pronunciation: PronunciationService,
+        feedback: RecitationFeedbackService,
     ) -> None:
         self._provider = provider
         self._reference_features = reference_features
-        self._pronunciation = pronunciation
+        self._feedback = feedback
 
     async def analyze(
         self,
@@ -54,6 +59,7 @@ class AnalysisEngine:
         except Exception as error:  # noqa: BLE001 — any provider failure is a hard failure here
             raise AnalysisFailedError(f"Could not load ayah text: {error}") from error
 
+        last_ayah = ayah_number_end if is_range else ayah_number
         try:
             if is_range:
                 reference_features = await self._reference_features.get_or_create_range(
@@ -63,11 +69,16 @@ class AnalysisEngine:
                 reference_features = await self._reference_features.get_or_create(
                     reciter_id, surah_number, ayah_number
                 )
+            reference_audio = [
+                str(await self._reference_features.get_audio_path(reciter_id, surah_number, n))
+                for n in range(ayah_number, last_ayah + 1)
+            ]
         except ReferenceUnavailableError as error:
             raise AnalysisFailedError(str(error)) from error
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             wav_path = str(Path(tmp_dir) / "user.wav")
+            reference_wav_path = str(Path(tmp_dir) / "reference.wav")
             # librosa decoding/DSP is CPU-bound and synchronous — run it off
             # the event loop so one analysis doesn't stall every other request.
             try:
@@ -75,34 +86,21 @@ class AnalysisEngine:
             except Exception as error:  # noqa: BLE001
                 raise AnalysisFailedError(f"Could not decode the recording: {error}") from error
 
+            try:
+                await asyncio.to_thread(concat_to_wav, reference_audio, reference_wav_path)
+            except Exception as error:  # noqa: BLE001
+                raise AnalysisFailedError(f"Could not decode the reference recording: {error}") from error
+
             user_features = await asyncio.to_thread(extract_audio_features, wav_path)
             style = await asyncio.to_thread(compare_features, user_features, reference_features)
+            melody_differences = pitch_differences(ayah.words, user_features, reference_features)
 
             try:
-                pronunciation_result = await self._pronunciation.analyze(wav_path, ayah.arabicText)
-            except PronunciationServiceUnavailableError as error:
+                ai = await self._feedback.analyze(wav_path, reference_wav_path, ayah.arabicText, melody_differences)
+            except RecitationFeedbackUnavailableError as error:
                 raise AnalysisFailedError(str(error)) from error
 
-        correctness = CorrectnessScores(
-            pronunciation=pronunciation_result.pronunciation, tajweed=pronunciation_result.tajweed
-        )
-
-        words = _build_word_analyses(ayah.words, user_features, style, pronunciation_result.words)
-
-        overall_score = round(
-            correctness.pronunciation * 0.3
-            + correctness.tajweed * 0.3
-            + style.pitch * 0.15
-            + style.rhythm * 0.1
-            + style.timing * 0.1
-            + style.melody * 0.05,
-            1,
-        )
-
-        insights: list[CoachInsight] = [build_overall_insight(correctness, style, overall_score)]
-        for draft in pronunciation_result.insights:
-            insights.append(CoachInsight(id=f"correctness-{uuid.uuid4().hex[:8]}", headline=draft.headline, detail=draft.detail))
-        insights.append(build_style_insight(style))
+        overall_score = round(ai.score * _AI_WEIGHT + style.similarity * _STYLE_WEIGHT, 1)
 
         return RecitationAnalysis(
             id=f"analysis-{uuid.uuid4().hex}",
@@ -112,12 +110,7 @@ class AnalysisEngine:
             reciterId=reciter_id,
             attemptNumber=attempt_number,
             overallScore=overall_score,
-            correctness=correctness,
-            style=style,
-            words=words,
-            referencePitchContour=_to_pitch_points(reference_features.pitchContour, reference_features.pitchTimestamps),
-            userPitchContour=_to_pitch_points(user_features.pitchContour, user_features.pitchTimestamps),
-            insights=insights,
+            feedback=ai.feedback,
         )
 
     async def _load_ayah_range(self, surah_number: int, start_ayah: int, end_ayah: int) -> Ayah:
@@ -132,70 +125,3 @@ class AnalysisEngine:
             words=[word for a in ayahs for word in a.words],
         )
 
-
-def _to_pitch_points(contour: list[float], timestamps: list[float]) -> list[PitchPoint]:
-    return [
-        PitchPoint(timestamp=round(t * 1000), normalizedPitch=round(max(-1.0, min(1.0, v / 24.0)), 3))
-        for t, v in zip(timestamps, contour)
-    ]
-
-
-def _build_word_analyses(ayah_words, user_features, style, pronunciation_words) -> list[WordAnalysis]:
-    """Word-level timing comes from real silence-split segments when the
-    segment count happens to match the word count; otherwise it falls back
-    to an even split of the total duration — an honest approximation, not
-    fabricated precision. Per-word pronunciation/Tajweed scores are a
-    documented coarse mapping from OpenAI's qualitative status, not
-    false-precision numbers the model was never asked to invent.
-    """
-    segments = user_features.voicedSegments
-    word_count = len(ayah_words)
-
-    if len(segments) == word_count:
-        timings = segments
-    else:
-        total = user_features.durationSeconds or 1.0
-        step = total / max(word_count, 1)
-        timings = [[i * step, (i + 1) * step] for i in range(word_count)]
-
-    word_analyses: list[WordAnalysis] = []
-    for i, word in enumerate(ayah_words):
-        start, end = timings[i] if i < len(timings) else (0.0, 0.0)
-        pron = pronunciation_words[i] if i < len(pronunciation_words) else None
-        status = pron.status if pron and pron.status in _VALID_STATUSES else "good"
-        score = _STATUS_SCORE[status]
-        feedback = pron.feedback if pron else "No specific feedback for this word."
-
-        pitch_cue = _pitch_cue_for_span(user_features.pitchContour, user_features.pitchTimestamps, start, end)
-
-        word_analyses.append(
-            WordAnalysis(
-                index=i,
-                arabicText=word,
-                startTime=round(start * 1000),
-                endTime=round(end * 1000),
-                status=status,
-                pronunciationScore=score,
-                tajweedScore=score,
-                pitchScore=style.pitch,
-                pitchCue=pitch_cue,
-                feedback=feedback,
-            )
-        )
-    return word_analyses
-
-
-def _pitch_cue_for_span(contour: list[float], timestamps: list[float], start: float, end: float) -> str:
-    span = [v for t, v in zip(timestamps, contour) if start <= t <= end]
-    if len(span) < 2:
-        return "hold"
-    delta = span[-1] - span[0]
-    if delta > 2.5:
-        return "raise"
-    if delta > 0.8:
-        return "graduallyRaise"
-    if delta < -2.5:
-        return "lower"
-    if delta < -0.8:
-        return "graduallyLower"
-    return "hold"

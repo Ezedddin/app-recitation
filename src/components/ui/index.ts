@@ -7,4 +7,4 @@ export * from './ScoreRing';
 export * from './ScreenContainer';
 export * from './SecondaryButton';
 export * from './SectionHeader';
-export * from './SkillScore';
+export * from './FeedbackText';

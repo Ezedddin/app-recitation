@@ -2,7 +2,7 @@
 
 Real analysis engine for the app: UmmahAPI for Quran text/reciters/reference
 audio, deterministic DSP (librosa) for pitch/rhythm/timing, OpenAI for
-pronunciation/Tajweed scoring of the user's own recording. No mock mode —
+the overall score and feedback text on the user's own recording. No mock mode —
 see the module docstrings in `app/` for how each piece fits together.
 
 ## Run it

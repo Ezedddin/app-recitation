@@ -2,10 +2,10 @@ import { StyleSheet, View } from 'react-native';
 import Svg, { Circle, Polyline } from 'react-native-svg';
 
 import { Colors } from '@/constants';
-import type { SkillHistoryPoint } from '@/types';
+import type { ScoreHistoryPoint } from '@/types';
 
 interface TrendSparklineProps {
-  history: SkillHistoryPoint[];
+  history: ScoreHistoryPoint[];
   color?: string;
   height?: number;
 }

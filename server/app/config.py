@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     ummahapi_key: str | None = None
     ummahapi_base_url: str = "https://ummahapi.com/api"
 
-    # Required for pronunciation/Tajweed scoring and coaching text. Analysis
+    # Required for the recitation score and AI feedback text. Analysis
     # requests fail with a clear error (never fake results) if this is unset.
     openai_api_key: str | None = None
     # "gpt-4o-audio-preview" (the name in most docs at build time) 404'd on
@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     # model list actually exposes for audio-capable chat completions.
     # Override via OPENAI_MODEL if your account differs.
     openai_model: str = "gpt-audio"
+    # Low temperature for a steadier score: 5 runs on the same recording
+    # spread 11 points at the default vs. 6 at 0.2. None = model default.
+    openai_temperature: float | None = 0.2
 
     reference_features_dir: Path = SERVER_ROOT / "reference_features"
     # v2: switched pitch extraction from librosa.pyin to librosa.yin + an

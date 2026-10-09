@@ -1,11 +1,10 @@
-import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { BackHeader, Card, PrimaryButton, ScreenContainer, SectionHeader, SkillScore } from '@/components/ui';
+import { BackHeader, Card, FeedbackText, PrimaryButton, ScoreRing, ScreenContainer, SectionHeader } from '@/components/ui';
 import { Colors, Spacing, Typography } from '@/constants';
 import { useAppStore } from '@/stores/useAppStore';
-import { formatWordList, summarizeVoiceDiscovery } from '@/utils/voiceProfile';
+import { summarizeVoiceDiscovery } from '@/utils/voiceProfile';
 
 export default function VoiceResultsScreen() {
   const analyses = useAppStore((state) => state.voiceDiscoveryAnalyses);
@@ -39,36 +38,21 @@ export default function VoiceResultsScreen() {
           </View>
         )}
 
-        <Card style={styles.section}>
-          <SectionHeader title="Correctness" subtitle="Pronunciation and Tajweed" />
-          <SkillScore label="Pronunciation" score={summary.correctness.pronunciation} />
-          <SkillScore label="Tajweed" score={summary.correctness.tajweed} />
-        </Card>
+        <View style={styles.scoreWrap}>
+          <ScoreRing score={summary.averageScore} label="Starting score" />
+        </View>
 
-        <Card style={styles.section}>
-          <View style={styles.row}>
-            <Ionicons name="sparkles-outline" size={18} color={Colors.primary} />
-            <Text style={styles.rowText}>
-              Your natural delivery leans <Text style={styles.emphasis}>{summary.naturalStyleLabel}</Text>.
-            </Text>
-          </View>
-
-          {summary.strengths.length > 0 ? (
-            <View style={styles.row}>
-              <Ionicons name="star-outline" size={18} color={Colors.primary} />
-              <Text style={styles.rowText}>
-                You&apos;re already strong on {formatWordList(summary.strengths)}.
-              </Text>
-            </View>
-          ) : null}
-
-          {summary.growthAreas.length > 0 ? (
-            <View style={styles.row}>
-              <Ionicons name="trending-up-outline" size={18} color={Colors.goldAccent} />
-              <Text style={styles.rowText}>Focus your practice on {formatWordList(summary.growthAreas)}.</Text>
-            </View>
-          ) : null}
-        </Card>
+        {summary.feedback.length > 0 ? (
+          <Card style={styles.section}>
+            <SectionHeader title="Feedback" />
+            {summary.feedback.map((text, index) => (
+              <View key={index} style={[styles.feedbackItem, index > 0 && styles.feedbackDivider]}>
+                <Text style={styles.feedbackLabel}>Ayah {index + 1}</Text>
+                <FeedbackText text={text} />
+              </View>
+            ))}
+          </Card>
+        ) : null}
 
         {onboardingCompleted ? (
           <Text style={styles.footerNote}>
@@ -78,8 +62,8 @@ export default function VoiceResultsScreen() {
         ) : (
           <>
             <Text style={styles.footerNote}>
-              Next, choose a reciter whose style you&apos;d like to learn — we&apos;ll keep coaching your own
-              pronunciation and Tajweed the whole way, not just how closely you match them.
+              Next, choose a reciter whose style you&apos;d like to learn — every recitation gets a score and
+              feedback on how well you recited it, not just how closely you match them.
             </Text>
             <PrimaryButton
               label="Choose your reciter style"
@@ -122,22 +106,24 @@ const styles = StyleSheet.create({
     ...Typography.callout,
     color: Colors.secondaryText,
   },
+  scoreWrap: {
+    alignItems: 'center',
+    paddingVertical: Spacing.md,
+  },
   section: {
     gap: Spacing.sm,
   },
-  row: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-    alignItems: 'flex-start',
+  feedbackItem: {
+    gap: Spacing.xs,
   },
-  rowText: {
-    ...Typography.callout,
-    color: Colors.text,
-    flex: 1,
+  feedbackDivider: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.divider,
+    paddingTop: Spacing.md,
   },
-  emphasis: {
-    fontWeight: '700',
-    color: Colors.primary,
+  feedbackLabel: {
+    ...Typography.caption,
+    color: Colors.secondaryText,
   },
   footerNote: {
     ...Typography.footnote,

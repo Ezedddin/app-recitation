@@ -16,6 +16,12 @@ class ReferenceFeatureStore:
     def _path(self, provider: str, reciter_id: str, surah_number: int, ayah_number: int, version: int) -> Path:
         return self.root / provider / reciter_id / str(surah_number) / f"{ayah_number}.v{version}.json"
 
+    def audio_path(self, provider: str, reciter_id: str, surah_number: int, ayah_number: int) -> Path:
+        """The reference recording itself, kept next to its features so it can
+        be sent along with the user's recording for side-by-side feedback.
+        Not versioned — the recording doesn't change when analysis does."""
+        return self.root / provider / reciter_id / str(surah_number) / f"{ayah_number}.audio"
+
     def load(
         self, provider: str, reciter_id: str, surah_number: int, ayah_number: int, version: int
     ) -> ReferenceFeatureRecord | None:
