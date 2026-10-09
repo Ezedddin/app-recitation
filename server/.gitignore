@@ -4,4 +4,5 @@ __pycache__/
 .env
 .pytest_cache/
 reference_features/*/
+audio_clips/
 !reference_features/.gitkeep

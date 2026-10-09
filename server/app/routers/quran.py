@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from app.dependencies import get_provider
 from app.models.quran import Ayah, ReferenceAudio, Surah
@@ -36,9 +36,18 @@ async def get_ayah(
 
 @router.get("/surah/{surah_number}/ayah/{ayah_number}/audio", response_model=list[ReferenceAudio])
 async def get_ayah_audio(
-    surah_number: int, ayah_number: int, provider: QuranAudioProvider = Depends(get_provider)
+    surah_number: int, ayah_number: int, request: Request, provider: QuranAudioProvider = Depends(get_provider)
 ) -> list[ReferenceAudio]:
     try:
-        return await provider.get_reference_audio(surah_number, ayah_number)
+        entries = await provider.get_reference_audio(surah_number, ayah_number)
     except UmmahApiError as error:
         raise HTTPException(status_code=502, detail=f"Reference audio unavailable: {error}") from error
+    # Clip URLs are paths on this server; resolve them against the host the
+    # app actually used (localhost on the simulator, the LAN IP on a device).
+    base = str(request.base_url).rstrip("/")
+    return [
+        entry.model_copy(update={"ayahAudioUrl": f"{base}{entry.ayahAudioUrl}"})
+        if entry.ayahAudioUrl and entry.ayahAudioUrl.startswith("/")
+        else entry
+        for entry in entries
+    ]

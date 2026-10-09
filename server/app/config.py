@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     # normal requests never do this automatically.
     reference_analysis_version: int = 2
 
+    # Ayah clips cut from mp3quran full-surah audio (see mp3quran_clip_source.py).
+    audio_clip_dir: Path = SERVER_ROOT / "audio_clips"
+
     cors_origins: list[str] = ["*"]
 
 

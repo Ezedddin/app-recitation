@@ -8,6 +8,7 @@ import httpx
 from app.config import settings
 from app.locks.async_lock_registry import reference_locks
 from app.models.features import AudioFeatures, ReferenceFeatureRecord
+from app.providers.mp3quran_clip_source import ClipUnavailableError, Mp3QuranClipSource
 from app.providers.quran_audio_provider import QuranAudioProvider
 from app.providers.ummah_api_provider import PROVIDER_NAME, UmmahApiError
 from app.services.audio_features import extract_audio_features
@@ -30,9 +31,15 @@ class ReferenceFeatureService:
     `REFERENCE_ANALYSIS_VERSION`.
     """
 
-    def __init__(self, provider: QuranAudioProvider, store: ReferenceFeatureStore) -> None:
+    def __init__(
+        self,
+        provider: QuranAudioProvider,
+        store: ReferenceFeatureStore,
+        clip_source: Mp3QuranClipSource | None = None,
+    ) -> None:
         self._provider = provider
         self._store = store
+        self._clip_source = clip_source
 
     async def get_or_create_range(
         self, reciter_id: str, surah_number: int, start_ayah: int, end_ayah: int
@@ -128,6 +135,15 @@ class ReferenceFeatureService:
         )
 
     async def _download(self, url: str, destination: Path) -> bytes:
+        if self._clip_source is not None and self._clip_source.owns(url):
+            try:
+                clip = await self._clip_source.get_clip_for_path(url)
+            except ClipUnavailableError as error:
+                raise ReferenceUnavailableError(str(error)) from error
+            audio_bytes = clip.read_bytes()
+            destination.write_bytes(audio_bytes)
+            return audio_bytes
+
         try:
             async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
                 response = await client.get(url)

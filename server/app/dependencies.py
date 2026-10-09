@@ -1,6 +1,7 @@
 from functools import lru_cache
 
 from app.config import settings
+from app.providers.mp3quran_clip_source import Mp3QuranClipSource
 from app.providers.quran_audio_provider import QuranAudioProvider
 from app.providers.ummah_api_provider import UmmahApiProvider
 from app.services.analysis_engine import AnalysisEngine
@@ -10,8 +11,13 @@ from app.storage.reference_store import ReferenceFeatureStore
 
 
 @lru_cache
+def get_clip_source() -> Mp3QuranClipSource:
+    return Mp3QuranClipSource(settings.audio_clip_dir)
+
+
+@lru_cache
 def get_provider() -> QuranAudioProvider:
-    return UmmahApiProvider()
+    return UmmahApiProvider(get_clip_source())
 
 
 @lru_cache
@@ -21,7 +27,7 @@ def get_reference_store() -> ReferenceFeatureStore:
 
 @lru_cache
 def get_reference_feature_service() -> ReferenceFeatureService:
-    return ReferenceFeatureService(get_provider(), get_reference_store())
+    return ReferenceFeatureService(get_provider(), get_reference_store(), get_clip_source())
 
 
 @lru_cache

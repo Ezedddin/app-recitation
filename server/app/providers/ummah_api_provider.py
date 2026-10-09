@@ -5,6 +5,7 @@ import httpx
 from app.config import settings
 from app.models.quran import Ayah, ReferenceAudio, Surah
 from app.models.reciter import Reciter
+from app.providers.mp3quran_clip_source import Mp3QuranClipSource
 from app.providers.quran_audio_provider import QuranAudioProvider
 
 PROVIDER_NAME = "ummahapi"
@@ -37,7 +38,8 @@ class UmmahApiError(RuntimeError):
 
 
 class UmmahApiProvider(QuranAudioProvider):
-    def __init__(self) -> None:
+    def __init__(self, clip_source: Mp3QuranClipSource | None = None) -> None:
+        self._clip_source = clip_source
         self._base_url = settings.ummahapi_base_url
         self._headers = {"apikey": settings.ummahapi_key} if settings.ummahapi_key else {}
 
@@ -113,8 +115,17 @@ class UmmahApiProvider(QuranAudioProvider):
         return [
             ReferenceAudio(
                 reciterId=str(entry["reciter_id"]),
-                ayahAudioUrl=_fix_ayah_audio_url(entry.get("ayah_audio")),
+                ayahAudioUrl=self._ayah_audio_url(entry, surah_number, ayah_number),
                 surahAudioUrl=entry.get("surah_audio"),
             )
             for entry in payload["data"]["audio"]
         ]
+
+    def _ayah_audio_url(self, entry: dict, surah_number: int, ayah_number: int) -> str | None:
+        url = _fix_ayah_audio_url(entry.get("ayah_audio"))
+        reciter_id = str(entry["reciter_id"])
+        if not url and self._clip_source and self._clip_source.covers(reciter_id):
+            # Relative path to our own clip endpoint — the quran router makes
+            # it absolute for the app; the reference service resolves it locally.
+            return self._clip_source.clip_path(reciter_id, surah_number, ayah_number)
+        return url

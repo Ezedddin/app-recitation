@@ -18,6 +18,11 @@ uvicorn app.main:app --host 0.0.0.0 --port 8787
 Requires `ffmpeg` on PATH (used by librosa/audioread to decode the app's
 `.m4a` recordings and UmmahAPI's `.mp3` reference audio).
 
+Reciters that UmmahAPI only has as full-surah audio (Bandar Baleela,
+Abdullah Al-Buajan) get per-ayah clips cut from mp3quran.net using its
+published ayah timings — served at `/api/v1/audio/...` and cached in
+`audio_clips/` (see `app/providers/mp3quran_clip_source.py`).
+
 The iOS Simulator reaches `http://localhost:8787` directly. A physical
 device needs the Mac's LAN IP — set `EXPO_PUBLIC_API_BASE_URL` when starting
 Expo.
