@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import tempfile
 from pathlib import Path
@@ -113,7 +114,7 @@ class ReferenceFeatureService:
         with tempfile.TemporaryDirectory() as tmp_dir:
             file_path = Path(tmp_dir) / "reference_audio"
             audio_bytes = await self._download(audio_url, file_path)
-            features = extract_audio_features(str(file_path))
+            features = await asyncio.to_thread(extract_audio_features, str(file_path))
 
         return ReferenceFeatureRecord(
             provider=PROVIDER_NAME,

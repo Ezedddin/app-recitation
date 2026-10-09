@@ -1,3 +1,4 @@
+import asyncio
 import tempfile
 import uuid
 from datetime import UTC, datetime
@@ -67,13 +68,15 @@ class AnalysisEngine:
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             wav_path = str(Path(tmp_dir) / "user.wav")
+            # librosa decoding/DSP is CPU-bound and synchronous — run it off
+            # the event loop so one analysis doesn't stall every other request.
             try:
-                convert_to_wav(recording_path, wav_path)
+                await asyncio.to_thread(convert_to_wav, recording_path, wav_path)
             except Exception as error:  # noqa: BLE001
                 raise AnalysisFailedError(f"Could not decode the recording: {error}") from error
 
-            user_features = extract_audio_features(wav_path)
-            style = compare_features(user_features, reference_features)
+            user_features = await asyncio.to_thread(extract_audio_features, wav_path)
+            style = await asyncio.to_thread(compare_features, user_features, reference_features)
 
             try:
                 pronunciation_result = await self._pronunciation.analyze(wav_path, ayah.arabicText)
@@ -99,9 +102,7 @@ class AnalysisEngine:
         insights: list[CoachInsight] = [build_overall_insight(correctness, style, overall_score)]
         for draft in pronunciation_result.insights:
             insights.append(CoachInsight(id=f"correctness-{uuid.uuid4().hex[:8]}", headline=draft.headline, detail=draft.detail))
-        style_insight = build_style_insight(words)
-        if style_insight:
-            insights.append(style_insight)
+        insights.append(build_style_insight(style))
 
         return RecitationAnalysis(
             id=f"analysis-{uuid.uuid4().hex}",

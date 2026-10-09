@@ -6,7 +6,7 @@ import { FlatList, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Card, EmptyState, ScreenContainer } from '@/components/ui';
 import { Colors, Radius, Spacing, Typography } from '@/constants';
 import { quranService } from '@/services/quran';
-import { useAppStore } from '@/stores/useAppStore';
+import { ayahsCovered, useAppStore } from '@/stores/useAppStore';
 import type { Surah } from '@/types';
 
 export default function PracticeBrowserScreen() {
@@ -28,7 +28,7 @@ export default function PracticeBrowserScreen() {
     const map = new Map<string, Set<number>>();
     for (const attempt of attempts) {
       const set = map.get(attempt.surahId) ?? new Set<number>();
-      set.add(attempt.ayahNumber);
+      for (const ayahNumber of ayahsCovered(attempt)) set.add(ayahNumber);
       map.set(attempt.surahId, set);
     }
     return map;

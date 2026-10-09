@@ -65,6 +65,34 @@ export const useAppStore = create<AppState>()(
   ),
 );
 
+export function isFlowAttempt(attempt: PracticeAttempt): boolean {
+  return attempt.ayahNumberEnd !== undefined && attempt.ayahNumberEnd > attempt.ayahNumber;
+}
+
+/** Every ayah number an attempt recited — one for a single-ayah attempt, the whole range for a flow attempt. */
+export function ayahsCovered(attempt: PracticeAttempt): number[] {
+  const end = isFlowAttempt(attempt) ? (attempt.ayahNumberEnd as number) : attempt.ayahNumber;
+  return Array.from({ length: end - attempt.ayahNumber + 1 }, (_, i) => attempt.ayahNumber + i);
+}
+
+/** Single-ayah attempts only — a flow attempt's score covers several ayat, so it isn't comparable here. */
 export function attemptsFor(attempts: PracticeAttempt[], surahId: string, ayahNumber: number): PracticeAttempt[] {
-  return attempts.filter((attempt) => attempt.surahId === surahId && attempt.ayahNumber === ayahNumber);
+  return attempts.filter(
+    (attempt) => attempt.surahId === surahId && attempt.ayahNumber === ayahNumber && !isFlowAttempt(attempt),
+  );
+}
+
+export function flowAttemptsFor(
+  attempts: PracticeAttempt[],
+  surahId: string,
+  startAyah: number,
+  endAyah: number,
+): PracticeAttempt[] {
+  return attempts.filter(
+    (attempt) =>
+      attempt.surahId === surahId &&
+      attempt.ayahNumber === startAyah &&
+      attempt.ayahNumberEnd === endAyah &&
+      isFlowAttempt(attempt),
+  );
 }

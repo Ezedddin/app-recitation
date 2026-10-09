@@ -8,7 +8,7 @@ import { useAsync } from '@/hooks/useAsync';
 import { progressService } from '@/services/progress';
 import { quranService } from '@/services/quran';
 import { reciterService } from '@/services/reciters';
-import { useAppStore } from '@/stores/useAppStore';
+import { ayahsCovered, useAppStore } from '@/stores/useAppStore';
 
 const DEFAULT_SURAH_ID = '1';
 
@@ -27,7 +27,7 @@ export default function HomeScreen() {
   const summary = useMemo(() => progressService.summarize(attempts), [attempts]);
 
   const attemptedAyahs = useMemo(
-    () => new Set(attempts.filter((a) => a.surahId === lastSurahId).map((a) => a.ayahNumber)).size,
+    () => new Set(attempts.filter((a) => a.surahId === lastSurahId).flatMap(ayahsCovered)).size,
     [attempts, lastSurahId],
   );
   const continueProgress = surah && surah.ayahCount > 0 ? Math.round((attemptedAyahs / surah.ayahCount) * 100) : 0;

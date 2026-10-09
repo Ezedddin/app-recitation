@@ -4,6 +4,8 @@ export interface PracticeAttempt {
   id: string;
   surahId: string;
   ayahNumber: number;
+  /** Set only for a "flowing recitation" attempt spanning `ayahNumber`..`ayahNumberEnd` in one take. */
+  ayahNumberEnd?: number;
   reciterId: string;
   createdAt: string;
   durationSeconds: number;

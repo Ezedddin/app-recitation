@@ -8,7 +8,7 @@ import { Colors, Spacing } from '@/constants';
 import { useAsync } from '@/hooks/useAsync';
 import { useAudioPlayback } from '@/hooks/useAudioPlayback';
 import { quranService } from '@/services/quran';
-import { useAppStore } from '@/stores/useAppStore';
+import { isFlowAttempt, useAppStore } from '@/stores/useAppStore';
 
 interface PlayRequest {
   ayahNumber: number;
@@ -52,7 +52,7 @@ export default function AyahListScreen() {
   const bestScoreByAyah = useMemo(() => {
     const map = new Map<number, number>();
     for (const attempt of attempts) {
-      if (attempt.surahId !== surahId) continue;
+      if (attempt.surahId !== surahId || isFlowAttempt(attempt)) continue;
       map.set(attempt.ayahNumber, Math.max(map.get(attempt.ayahNumber) ?? 0, attempt.analysis.overallScore));
     }
     return map;

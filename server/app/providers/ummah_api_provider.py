@@ -16,6 +16,21 @@ PROVIDER_NAME = "ummahapi"
 _RESPONSE_CACHE_TTL_SECONDS = 4 * 60 * 60
 _response_cache: dict[str, tuple[float, dict]] = {}
 
+# UmmahAPI returns ayah-audio URLs with a misspelled everyayah.com folder for
+# some reciters — every one 404s. Maps the broken folder to the real one;
+# verified against everyayah.com. Remove an entry once UmmahAPI fixes it.
+_AYAH_AUDIO_FOLDER_FIXES = {
+    "/MauroAuad-AlMuaiqly_128kbps/": "/MaherAlMuaiqly128kbps/",  # Maher Al Muaiqly
+}
+
+
+def _fix_ayah_audio_url(url: str | None) -> str | None:
+    if not url:
+        return url
+    for broken, fixed in _AYAH_AUDIO_FOLDER_FIXES.items():
+        url = url.replace(broken, fixed)
+    return url
+
 
 class UmmahApiError(RuntimeError):
     """Raised when UmmahAPI is unreachable or returns an unexpected response."""
@@ -98,7 +113,7 @@ class UmmahApiProvider(QuranAudioProvider):
         return [
             ReferenceAudio(
                 reciterId=str(entry["reciter_id"]),
-                ayahAudioUrl=entry.get("ayah_audio"),
+                ayahAudioUrl=_fix_ayah_audio_url(entry.get("ayah_audio")),
                 surahAudioUrl=entry.get("surah_audio"),
             )
             for entry in payload["data"]["audio"]

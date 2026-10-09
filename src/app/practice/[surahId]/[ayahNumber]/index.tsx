@@ -10,7 +10,7 @@ import { useAsync } from '@/hooks/useAsync';
 import { useRecitationRecorder } from '@/hooks/useRecitationRecorder';
 import { quranService } from '@/services/quran';
 import { reciterService } from '@/services/reciters';
-import { useAppStore } from '@/stores/useAppStore';
+import { attemptsFor, useAppStore } from '@/stores/useAppStore';
 
 export default function PracticeScreen() {
   const { surahId, ayahNumber } = useLocalSearchParams<{ surahId: string; ayahNumber: string }>();
@@ -30,7 +30,7 @@ export default function PracticeScreen() {
   );
 
   const attemptNumber = useMemo(
-    () => attempts.filter((a) => a.surahId === surahId && a.ayahNumber === ayahNum).length + 1,
+    () => attemptsFor(attempts, surahId, ayahNum).length + 1,
     [attempts, surahId, ayahNum],
   );
 

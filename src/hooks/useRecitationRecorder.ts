@@ -24,7 +24,8 @@ export interface UseRecitationRecorderResult {
 /**
  * Owns all microphone-recording concerns (permissions, lifecycle, cleanup)
  * behind a small state machine so screens never touch expo-audio directly.
- * Recordings are stored locally (cache directory) for phase 1 — no upload.
+ * Recordings are written to the local cache directory; the analysis
+ * service uploads them from there.
  */
 export function useRecitationRecorder(): UseRecitationRecorderResult {
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);

@@ -47,9 +47,13 @@ def compare_features(user: AudioFeatures, reference: AudioFeatures) -> StyleScor
     user_segment_durations = [end - start for start, end in user.voicedSegments]
     ref_segment_durations = [end - start for start, end in reference.voicedSegments]
     if user_segment_durations and ref_segment_durations:
+        # Scale calibrated on real recitations (5 professional reciters x 11
+        # ayat): two different pros on the same ayah land around a median of
+        # ~84, a mismatched ayah around ~63. The previous 0.5 scored most pro
+        # pairs near zero.
         rhythm_score = _score_from_distance(
             _dtw_distance(_resample(user_segment_durations, 20), _resample(ref_segment_durations, 20)),
-            scale=0.5,
+            scale=4.0,
         )
     else:
         rhythm_score = 50.0

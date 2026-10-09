@@ -10,7 +10,7 @@ import { useAsync } from '@/hooks/useAsync';
 import { useRecitationRecorder } from '@/hooks/useRecitationRecorder';
 import { analysisService } from '@/services/analysis';
 import { quranService } from '@/services/quran';
-import { useAppStore } from '@/stores/useAppStore';
+import { flowAttemptsFor, useAppStore } from '@/stores/useAppStore';
 
 export default function FlowPracticeScreen() {
   const { surahId, startAyah, endAyah } = useLocalSearchParams<{
@@ -37,8 +37,8 @@ export default function FlowPracticeScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const attemptNumber = useMemo(
-    () => attempts.filter((a) => a.surahId === surahId && a.ayahNumber === start).length + 1,
-    [attempts, surahId, start],
+    () => flowAttemptsFor(attempts, surahId, start, end).length + 1,
+    [attempts, surahId, start, end],
   );
 
   const handleAnalyze = () => {
@@ -60,6 +60,7 @@ export default function FlowPracticeScreen() {
           id: analysis.id,
           surahId,
           ayahNumber: start,
+          ayahNumberEnd: end,
           reciterId: analysis.reciterId,
           createdAt: analysis.createdAt,
           durationSeconds: recorder.durationMillis / 1000,

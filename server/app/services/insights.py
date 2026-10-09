@@ -1,4 +1,4 @@
-from app.models.analysis import CoachInsight, CorrectnessScores, StyleScores, WordAnalysis
+from app.models.analysis import CoachInsight, CorrectnessScores, StyleScores
 
 
 def _overall_headline(score: float) -> str:
@@ -24,18 +24,35 @@ def _overall_detail(correctness: CorrectnessScores, style: StyleScores) -> str:
     return "Correctness and style are fairly balanced right now — keep practicing both together."
 
 
-def build_style_insight(words: list[WordAnalysis]) -> CoachInsight | None:
+_STYLE_TIPS = {
+    "pitch": (
+        "Your pitch is the biggest style gap to your reciter.",
+        "Listen to where the reference voice rises and falls, then follow those movements within your own range.",
+    ),
+    "rhythm": (
+        "Your rhythm is the biggest style gap to your reciter.",
+        "Pay attention to where the reference pauses and how long each phrase lasts, and mirror that pacing.",
+    ),
+    "timing": (
+        "Your overall timing is the biggest style gap to your reciter.",
+        "Your recitation was noticeably faster or slower than the reference — try matching its total length.",
+    ),
+    "melody": (
+        "Your melody is the biggest style gap to your reciter.",
+        "The overall shape of your tune differs from the reference — replay it and hum along before reciting.",
+    ),
+}
+
+
+def build_style_insight(style: StyleScores) -> CoachInsight:
     """Deterministic, templated — no LLM call needed for a style-side insight
-    since the pitch score itself is already real (DSP-derived)."""
-    if not words:
-        return None
-    weakest = min(words, key=lambda w: w.pitchScore)
-    return CoachInsight(
-        id=f"pitch-{weakest.index}",
-        headline=f"The biggest style opportunity is your pitch movement during {weakest.arabicText}.",
-        detail=weakest.feedback,
-        relatedWordIndex=weakest.index,
-    )
+    since the style scores themselves are real (DSP-derived). Points at the
+    weakest whole-recitation dimension; there's no per-word style score to
+    attribute it to a specific word honestly."""
+    scores = {"pitch": style.pitch, "rhythm": style.rhythm, "timing": style.timing, "melody": style.melody}
+    weakest = min(scores, key=scores.__getitem__)
+    headline, detail = _STYLE_TIPS[weakest]
+    return CoachInsight(id=f"style-{weakest}", headline=headline, detail=detail)
 
 
 def build_overall_insight(correctness: CorrectnessScores, style: StyleScores, overall_score: float) -> CoachInsight:

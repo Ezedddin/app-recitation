@@ -10,7 +10,7 @@ import { useAsync } from '@/hooks/useAsync';
 import { useAudioPlayback } from '@/hooks/useAudioPlayback';
 import { quranService } from '@/services/quran';
 import { reciterService } from '@/services/reciters';
-import { useAppStore } from '@/stores/useAppStore';
+import { attemptsFor, flowAttemptsFor, isFlowAttempt, useAppStore } from '@/stores/useAppStore';
 import { formatPercent, formatSignedPercent } from '@/utils/format';
 import type { CoachInsight, PracticeAttempt } from '@/types';
 
@@ -24,15 +24,19 @@ export default function ResultsScreen() {
     ayahNumberEnd?: string;
   }>();
   const ayahNum = Number(ayahNumber);
-  const isFlowAttempt = Boolean(ayahNumberEnd);
+  const isFlowResult = Boolean(ayahNumberEnd);
   const attempts = useAppStore((state) => state.attempts);
   const [showScores, setShowScores] = useState(false);
 
   const attempt = attempts.find((a) => a.id === attemptId);
   const previousAttempt = useMemo(() => {
     if (!attempt) return undefined;
-    const sameAyah = attempts
-      .filter((a) => a.surahId === surahId && a.ayahNumber === ayahNum && a.id !== attempt.id)
+    const comparable =
+      isFlowAttempt(attempt)
+        ? flowAttemptsFor(attempts, surahId, ayahNum, attempt.ayahNumberEnd as number)
+        : attemptsFor(attempts, surahId, ayahNum);
+    const sameAyah = comparable
+      .filter((a) => a.id !== attempt.id)
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     return sameAyah.at(-1);
   }, [attempts, attempt, surahId, ayahNum]);
@@ -92,7 +96,7 @@ export default function ResultsScreen() {
       params: { surahId, ayahNumber, attemptId },
     });
 
-  const showFlowSuggestion = !isFlowAttempt && ayahNum >= FLOW_GROUP_SIZE && ayahNum % FLOW_GROUP_SIZE === 0;
+  const showFlowSuggestion = !isFlowResult && ayahNum >= FLOW_GROUP_SIZE && ayahNum % FLOW_GROUP_SIZE === 0;
   const flowRangeStart = ayahNum - FLOW_GROUP_SIZE + 1;
 
   const goToFlowPractice = () => router.push(`/practice/${surahId}/flow/${flowRangeStart}/${ayahNum}`);
@@ -102,7 +106,7 @@ export default function ResultsScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         <BackHeader
           title="Your Recitation"
-          subtitle={`${surah.transliteratedName} · Ayah ${isFlowAttempt ? `${ayahNum}–${ayahNumberEnd}` : ayahNum}`}
+          subtitle={`${surah.transliteratedName} · Ayah ${isFlowResult ? `${ayahNum}–${ayahNumberEnd}` : ayahNum}`}
         />
 
         <View style={styles.scoreWrap}>
@@ -116,7 +120,7 @@ export default function ResultsScreen() {
               key={insight.id}
               insight={insight}
               isLast={index === analysis.insights.length - 1}
-              onShowPitch={insight.id.startsWith('pitch-') ? goToPitch : undefined}
+              onShowPitch={insight.id.startsWith('style-') ? goToPitch : undefined}
             />
           ))}
         </Card>

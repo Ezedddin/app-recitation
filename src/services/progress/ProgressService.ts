@@ -1,11 +1,12 @@
+import { ayahsCovered, isFlowAttempt } from '@/stores/useAppStore';
 import type { PracticeAttempt, ProgressSummary, SkillId, SkillProgress } from '@/types';
 
 /**
  * Computes real progress from the user's own stored practice attempts —
- * nothing here is fabricated. The underlying per-attempt scores come from
- * the (currently mocked) analysis service, but the aggregation is genuine
- * arithmetic over what the user actually did, so a brand-new install shows
- * a real empty state rather than invented stats.
+ * nothing here is fabricated. The per-attempt scores come from the backend
+ * analysis, and the aggregation is genuine arithmetic over what the user
+ * actually did, so a brand-new install shows a real empty state rather than
+ * invented stats.
  */
 export interface ProgressService {
   summarize(attempts: PracticeAttempt[]): ProgressSummary;
@@ -39,17 +40,20 @@ function average(values: number[]): number {
   return values.reduce((sum, v) => sum + v, 0) / values.length;
 }
 
-function dayKey(iso: string): string {
-  return iso.slice(0, 10);
+/** Calendar day in the device's own timezone — `createdAt` is UTC, so slicing the ISO string would put late-night practice on the wrong day. */
+function localDayKey(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
 }
 
 function computeStreakDays(attempts: PracticeAttempt[]): number {
   if (attempts.length === 0) return 0;
-  const practicedDays = new Set(attempts.map((a) => dayKey(a.createdAt)));
+  const practicedDays = new Set(attempts.map((a) => localDayKey(new Date(a.createdAt))));
   let streak = 0;
   const cursor = new Date();
   for (;;) {
-    const key = cursor.toISOString().slice(0, 10);
+    const key = localDayKey(cursor);
     if (!practicedDays.has(key)) break;
     streak += 1;
     cursor.setDate(cursor.getDate() - 1);
@@ -90,10 +94,13 @@ function buildSkillProgress(attempts: PracticeAttempt[], skill: SkillId): SkillP
 export class LocalProgressService implements ProgressService {
   summarize(attempts: PracticeAttempt[]): ProgressSummary {
     const skills = (Object.keys(SKILL_LABELS) as SkillId[]).map((skill) => buildSkillProgress(attempts, skill));
-    const distinctAyat = new Set(attempts.map((a) => `${a.surahId}:${a.ayahNumber}`));
+    const distinctAyat = new Set(attempts.flatMap((a) => ayahsCovered(a).map((n) => `${a.surahId}:${n}`)));
 
     const bestScoreByAyah = new Map<string, number>();
+    // Mastery is per ayah, so only single-ayah attempts count — a flow
+    // attempt's score is shared across its whole range.
     for (const attempt of attempts) {
+      if (isFlowAttempt(attempt)) continue;
       const key = `${attempt.surahId}:${attempt.ayahNumber}`;
       bestScoreByAyah.set(key, Math.max(bestScoreByAyah.get(key) ?? 0, attempt.analysis.overallScore));
     }
