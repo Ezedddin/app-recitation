@@ -7,8 +7,6 @@ import { Colors, Spacing, Typography } from '@/constants';
 import { analysisService } from '@/services/analysis';
 import { useAppStore } from '@/stores/useAppStore';
 
-const STEPS = ['Listening', 'Comparing with your reciter', 'Scoring', 'Writing feedback'];
-
 export default function AnalyzingScreen() {
   const { surahId, ayahNumber, recordingUri, attemptNumber, durationMillis } = useLocalSearchParams<{
     surahId: string;
@@ -18,17 +16,9 @@ export default function AnalyzingScreen() {
     durationMillis?: string;
   }>();
   const addAttempt = useAppStore((state) => state.addAttempt);
-  const [activeStep, setActiveStep] = useState(0);
   const [failed, setFailed] = useState(false);
   const [failureDetail, setFailureDetail] = useState<string | null>(null);
   const navigatedRef = useRef(false);
-
-  useEffect(() => {
-    const stepTimer = setInterval(() => {
-      setActiveStep((step) => (step + 1) % STEPS.length);
-    }, 460);
-    return () => clearInterval(stepTimer);
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -89,13 +79,10 @@ export default function AnalyzingScreen() {
       <View style={styles.body}>
         <Text style={styles.headline}>Listening to your recitation…</Text>
         <ActivityIndicator color={Colors.primary} size="large" style={styles.spinner} />
-        <View style={styles.stepList}>
-          {STEPS.map((step, index) => (
-            <Text key={step} style={[styles.step, index === activeStep && styles.stepActive]}>
-              {step}
-            </Text>
-          ))}
-        </View>
+        <Text style={styles.note}>
+          We compare your recording with your reciter and write your feedback. This can take up to a minute — keep the
+          app open.
+        </Text>
       </View>
     </ScreenContainer>
   );
@@ -117,16 +104,9 @@ const styles = StyleSheet.create({
   spinner: {
     marginTop: Spacing.sm,
   },
-  stepList: {
-    gap: Spacing.sm,
-    alignItems: 'center',
-  },
-  step: {
+  note: {
     ...Typography.callout,
-    color: Colors.tertiaryText,
-  },
-  stepActive: {
-    color: Colors.primary,
-    fontWeight: '700',
+    color: Colors.secondaryText,
+    textAlign: 'center',
   },
 });

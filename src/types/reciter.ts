@@ -12,15 +12,3 @@ export interface ReferenceAudio {
   ayahAudioUrl: string | null;
   surahAudioUrl: string | null;
 }
-
-export interface TrainingWeek {
-  week: number;
-  title: string;
-  description: string;
-  focusSkill: 'pitch' | 'rhythm' | 'timing' | 'melody' | 'breath' | 'emotion';
-}
-
-export interface TrainingProgram {
-  reciterId: string;
-  weeks: TrainingWeek[];
-}

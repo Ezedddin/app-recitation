@@ -17,6 +17,11 @@ const SETTINGS_ROWS: { icon: keyof typeof Ionicons.glyphMap; label: string }[] =
   { icon: 'person-circle-outline', label: 'Account' },
 ];
 
+const LEGAL_ROWS = [
+  { icon: 'shield-checkmark-outline', label: 'Privacy Policy', document: 'privacy' },
+  { icon: 'document-text-outline', label: 'Terms of Use', document: 'terms' },
+] as const;
+
 export default function ProfileScreen() {
   const selectedReciterId = useAppStore((state) => state.selectedReciterId);
   const { data: reciter } = useAsync(
@@ -71,6 +76,21 @@ export default function ProfileScreen() {
             <Text style={styles.settingsLabel}>{row.label}</Text>
             <Text style={styles.comingSoon}>Coming soon</Text>
           </View>
+        ))}
+      </View>
+
+      <View style={[styles.settingsList, styles.legalList]}>
+        {LEGAL_ROWS.map((row) => (
+          <Pressable
+            key={row.document}
+            accessibilityRole="link"
+            accessibilityLabel={row.label}
+            onPress={() => router.push({ pathname: '/legal/[document]', params: { document: row.document } })}
+            style={styles.settingsRow}>
+            <Ionicons name={row.icon} size={18} color={Colors.secondaryText} />
+            <Text style={styles.settingsLabel}>{row.label}</Text>
+            <Ionicons name="chevron-forward" size={18} color={Colors.secondaryText} />
+          </Pressable>
         ))}
       </View>
     </ScreenContainer>
@@ -140,6 +160,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderRadius: Radius.lg,
     overflow: 'hidden',
+  },
+  legalList: {
+    marginTop: Spacing.lg,
   },
   settingsRow: {
     flexDirection: 'row',

@@ -21,7 +21,24 @@ export default function WelcomeScreen() {
         </View>
       </View>
 
-      <PrimaryButton label="Begin" onPress={() => router.push('/onboarding/discover-voice')} style={styles.cta} />
+      <PrimaryButton label="Begin" onPress={() => router.push('/onboarding/discover-voice')} />
+      <Text style={styles.consent}>
+        By continuing you agree to our{' '}
+        <Text
+          accessibilityRole="link"
+          style={styles.link}
+          onPress={() => router.push({ pathname: '/legal/[document]', params: { document: 'terms' } })}>
+          Terms of Use
+        </Text>{' '}
+        and{' '}
+        <Text
+          accessibilityRole="link"
+          style={styles.link}
+          onPress={() => router.push({ pathname: '/legal/[document]', params: { document: 'privacy' } })}>
+          Privacy Policy
+        </Text>
+        . Your recordings are analysed by AI and deleted from our server afterwards.
+      </Text>
     </ScreenContainer>
   );
 }
@@ -48,7 +65,15 @@ const styles = StyleSheet.create({
     color: Colors.secondaryText,
     textAlign: 'center',
   },
-  cta: {
+  consent: {
+    ...Typography.footnote,
+    color: Colors.secondaryText,
+    textAlign: 'center',
+    marginTop: Spacing.sm,
     marginBottom: Spacing.lg,
+  },
+  link: {
+    color: Colors.primary,
+    textDecorationLine: 'underline',
   },
 });

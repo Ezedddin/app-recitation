@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { PrimaryButton, ProgressCard, ScreenContainer, SectionHeader } from '@/components/ui';
+import { PrimaryButton, ProgressCard, ScreenContainer } from '@/components/ui';
 import { Colors, Radius, Spacing, Typography } from '@/constants';
 import { useAsync } from '@/hooks/useAsync';
 import { progressService } from '@/services/progress';
@@ -62,21 +62,6 @@ export default function HomeScreen() {
           <ProgressCard value={`${summary.totalMinutesPracticed}`} label="Minutes practiced" />
           <ProgressCard value={`${summary.ayatMastered}`} label="Ayat mastered" />
         </View>
-
-        <SectionHeader title="Today's Lesson" />
-        <View style={styles.lessonCard}>
-          <Text style={styles.lessonTitle}>Pitch Control</Text>
-          <Text style={styles.lessonBody}>
-            Learn how to smoothly raise and lower your voice during longer phrases.
-          </Text>
-          {selectedReciterId ? (
-            <PrimaryButton
-              label="Start lesson"
-              onPress={() => router.push(`/training/${selectedReciterId}`)}
-              style={styles.lessonCta}
-            />
-          ) : null}
-        </View>
       </ScrollView>
     </ScreenContainer>
   );
@@ -133,22 +118,5 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     gap: Spacing.sm,
-  },
-  lessonCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    padding: Spacing.lg,
-    gap: Spacing.xxs,
-  },
-  lessonTitle: {
-    ...Typography.headline,
-    color: Colors.text,
-  },
-  lessonBody: {
-    ...Typography.callout,
-    color: Colors.secondaryText,
-  },
-  lessonCta: {
-    marginTop: Spacing.md,
   },
 });
